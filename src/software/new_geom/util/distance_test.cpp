@@ -194,8 +194,8 @@ TEST(DistanceTest, point_near_polygon_closest_to_edge)
     Polygon polygon({Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)});
     Point point(0.5, 1.1);
     double expected = 0.1;
-    EXPECT_NEAR(distance(point, polygon), expected, GeomConstants::EPSILON);
-    EXPECT_NEAR(distance(polygon, point), expected, GeomConstants::EPSILON);
+    EXPECT_NEAR(distance(point, polygon), expected, GeomConstants::FIXED_EPSILON);
+    EXPECT_NEAR(distance(polygon, point), expected, GeomConstants::FIXED_EPSILON);
 }
 
 TEST(DistanceTest, point_far_from_polygon)
@@ -251,6 +251,33 @@ TEST(DistanceTest, point_right_rectangle)
     double expected = 1.0;
     EXPECT_DOUBLE_EQ(distance(p, r), expected);
     EXPECT_DOUBLE_EQ(distance(r, p), expected);
+}
+
+TEST(DistanceTest, point_in_circle)
+{
+    Circle circle(Point(2, 3), 4);
+    Point point(3, 4);
+    double expected = 0.0;
+    EXPECT_DOUBLE_EQ(distance(point, circle), expected);
+    EXPECT_DOUBLE_EQ(distance(circle, point), expected);
+}
+
+TEST(DistanceTest, point_on_circle_circumference)
+{
+    Circle circle(Point(2.5, 3), 4);
+    Point point(6.5, 3);
+    double expected = 0.0;
+    EXPECT_DOUBLE_EQ(distance(point, circle), expected);
+    EXPECT_DOUBLE_EQ(distance(circle, point), expected);
+}
+
+TEST(DistanceTest, point_outside_circle)
+{
+    Circle circle(Point(2.5, -2), 1);
+    Point point(6.5, -2);
+    double expected = 3.0;
+    EXPECT_DOUBLE_EQ(distance(point, circle), expected);
+    EXPECT_DOUBLE_EQ(distance(circle, point), expected);
 }
 
 TEST(DistanceTest, point_on_segment_end_squared)

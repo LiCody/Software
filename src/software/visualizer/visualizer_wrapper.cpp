@@ -17,6 +17,8 @@ VisualizerWrapper::VisualizerWrapper(int argc, char** argv)
           ai_draw_functions_buffer_size)),
       play_info_buffer(
           std::make_shared<ThreadSafeBuffer<PlayInfo>>(play_info_buffer_size)),
+      sensor_msg_buffer(
+          std::make_shared<ThreadSafeBuffer<SensorMsg>>(sensor_msg_buffer_size)),
       robot_status_buffer(
           std::make_shared<ThreadSafeBuffer<RobotStatus>>(robot_status_buffer_size)),
       view_area_buffer(
@@ -50,9 +52,10 @@ void VisualizerWrapper::createAndRunVisualizer(int argc, char** argv)
     QApplication* application = new QApplication(argc, argv);
     QApplication::connect(application, &QApplication::aboutToQuit,
                           [&]() { application_shutting_down = true; });
-    Visualizer* visualizer =
-        new Visualizer(world_draw_functions_buffer, ai_draw_functions_buffer,
-                       play_info_buffer, robot_status_buffer, view_area_buffer);
+    std::shared_ptr<ThunderbotsConfig> config = std::make_shared<ThunderbotsConfig>();
+    Visualizer* visualizer                    = new Visualizer(
+        world_draw_functions_buffer, ai_draw_functions_buffer, play_info_buffer,
+        sensor_msg_buffer, robot_status_buffer, view_area_buffer, config);
     visualizer->show();
 
     // Run the QApplication and all windows / widgets. This function will block
@@ -75,7 +78,7 @@ void VisualizerWrapper::onValueReceived(World world)
     auto world_draw_function = getDrawWorldFunction(world);
     world_draw_functions_buffer->push(world_draw_function);
 
-    if (!initial_view_area_set && world.field().fieldBoundary().area() > 0)
+    if (!initial_view_area_set && world.field().isValid())
     {
         initial_view_area_set = true;
         view_area_buffer->push(world.field().fieldBoundary());
@@ -90,6 +93,11 @@ void VisualizerWrapper::onValueReceived(AIDrawFunction draw_function)
 void VisualizerWrapper::onValueReceived(PlayInfo play_info)
 {
     play_info_buffer->push(play_info);
+}
+
+void VisualizerWrapper::onValueReceived(SensorMsg sensor_msg)
+{
+    sensor_msg_buffer->push(sensor_msg);
 }
 
 void VisualizerWrapper::onValueReceived(RobotStatus robot_status)

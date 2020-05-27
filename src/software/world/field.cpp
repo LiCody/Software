@@ -113,9 +113,29 @@ Rectangle Field::friendlyHalf() const
     return Rectangle(friendlyCornerNeg(), Point(0, friendlyCornerPos().y()));
 }
 
+Rectangle Field::friendlyPositiveYQuadrant() const
+{
+    return Rectangle(friendlyGoal(), Point(0, friendlyCornerPos().y()));
+}
+
+Rectangle Field::friendlyNegativeYQuadrant() const
+{
+    return Rectangle(friendlyGoal(), Point(0, friendlyCornerNeg().y()));
+}
+
 Rectangle Field::enemyHalf() const
 {
     return Rectangle(Point(0, enemyCornerNeg().y()), enemyCornerPos());
+}
+
+Rectangle Field::enemyPositiveYQuadrant() const
+{
+    return Rectangle(centerPoint(), enemyCornerPos());
+}
+
+Rectangle Field::enemyNegativeYQuadrant() const
+{
+    return Rectangle(centerPoint(), enemyCornerNeg());
 }
 
 Rectangle Field::fieldLines() const
@@ -128,6 +148,16 @@ Rectangle Field::fieldBoundary() const
     Point neg_x_neg_y_corner(-totalXLength() / 2, -totalYLength() / 2);
     Point pos_x_pos_y_corner(totalXLength() / 2, totalYLength() / 2);
     return Rectangle(neg_x_neg_y_corner, pos_x_pos_y_corner);
+}
+
+bool Field::isValid() const
+{
+    if (totalXLength() < GeomConstants::FIXED_EPSILON ||
+        totalYLength() < GeomConstants::FIXED_EPSILON)
+    {
+        return false;
+    }
+    return true;
 }
 
 double Field::centerCircleRadius() const

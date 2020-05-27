@@ -46,10 +46,16 @@ double Circle::area() const
 bool operator==(const Circle &c, const Circle &d)
 {
     return (c.getOrigin() == d.getOrigin()) &&
-           (std::abs(c.getRadius() - d.getRadius()) < GeomConstants::EPSILON);
+           (std::abs(c.getRadius() - d.getRadius()) < GeomConstants::FIXED_EPSILON);
 }
 
 bool operator!=(const Circle &c, const Circle &d)
 {
     return !(c == d);
+}
+
+std::ostream &operator<<(std::ostream &os, const Circle &circle)
+{
+    os << "Circle at " << circle.getOrigin() << " with radius " << circle.getRadius();
+    return os;
 }

@@ -1,16 +1,15 @@
 #include "software/ai/hl/stp/play/corner_kick_play.h"
 
-#include <g3log/g3log.hpp>
-
 #include "shared/constants.h"
 #include "software/ai/evaluation/ball.h"
 #include "software/ai/evaluation/possession.h"
-#include "software/ai/hl/stp/play/play_factory.h"
 #include "software/ai/hl/stp/tactic/goalie_tactic.h"
 #include "software/ai/hl/stp/tactic/move_tactic.h"
 #include "software/ai/hl/stp/tactic/passer_tactic.h"
 #include "software/ai/hl/stp/tactic/receiver_tactic.h"
 #include "software/ai/passing/pass_generator.h"
+#include "software/logger/logger.h"
+#include "software/util/design_patterns/generic_factory.h"
 
 using namespace Passing;
 
@@ -235,5 +234,5 @@ void CornerKickPlay::updatePassGenerator(PassGenerator &pass_generator)
     pass_generator.setPasserPoint(world.ball().position());
 }
 
-// Register this play in the PlayFactory
-static TPlayFactory<CornerKickPlay> factory;
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Play, CornerKickPlay> factory;

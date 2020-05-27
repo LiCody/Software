@@ -2,11 +2,12 @@ cc_library(
     name = "mrf_primitive_visitor",
     srcs = ["mrf_primitive_visitor.cpp"],
     hdrs = ["mrf_primitive_visitor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "//shared:constants",
         "//shared:firmware_primitive_type",
-        "//software/ai/primitive:all_primitives",
-        "//software/ai/primitive:primitive_visitor",
+        "//software/primitive:all_primitives",
+        "//software/primitive:primitive_visitor",
     ],
 )
 
@@ -43,9 +44,9 @@ cc_library(
         ":mrf_primitive_visitor",
         "//shared:constants",
         "//software:constants",
-        "//software/ai/primitive",
         "//software/backend:robot_status",
         "//software/backend/output/radio/mrf/usb:libusb",
         "//software/geom",
+        "//software/primitive",
     ],
 )

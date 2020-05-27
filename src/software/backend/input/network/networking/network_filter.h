@@ -6,22 +6,25 @@
 #include "software/backend/input/network/filter/ball_filter.h"
 #include "software/backend/input/network/filter/robot_filter.h"
 #include "software/backend/input/network/filter/robot_team_filter.h"
+#include "software/parameter/config.hpp"
 #include "software/proto/messages_robocup_ssl_wrapper.pb.h"
 #include "software/proto/ssl_referee.pb.h"
 #include "software/sensor_fusion/refbox_data.h"
 #include "software/time/timestamp.h"
 #include "software/world/ball.h"
-#include "software/world/ball_state.h"
 #include "software/world/field.h"
 #include "software/world/team.h"
+#include "software/world/timestamped_ball_state.h"
 
 class NetworkFilter
 {
    public:
+    explicit NetworkFilter() = delete;
     /**
      * Creates a new NetworkFilter for data input and filtering
      */
-    explicit NetworkFilter();
+    explicit NetworkFilter(std::shared_ptr<const RefboxConfig> refbox_config);
+
 
     /**
      * Filters the ball data contained in the list of DetectionFrames and returns the most
@@ -32,7 +35,8 @@ class NetworkFilter
      * @return The most up to date state of the ball given the new DetectionFrame
      * information
      */
-    BallState getFilteredBallData(const std::vector<SSL_DetectionFrame> &detections);
+    TimestampedBallState getFilteredBallData(
+        const std::vector<SSL_DetectionFrame> &detections);
 
     /**
      * Returns a new Field object containing the most up to date state of the field given
@@ -86,13 +90,15 @@ class NetworkFilter
     // so that we always publish "complete" data, not just data from a single frame/
     // part of the field
     Field field_state;
-    BallState ball_state;
+    TimestampedBallState ball_state;
     Team friendly_team_state;
     Team enemy_team_state;
 
     BallFilter ball_filter;
     RobotTeamFilter friendly_team_filter;
     RobotTeamFilter enemy_team_filter;
+
+    std::shared_ptr<const RefboxConfig> refbox_config;
 
     // backend *should* be the only part of the system that is aware of Refbox/Vision
     // global coordinates. To AI, +x will always be enemy and -x will always be friendly.
@@ -113,7 +119,7 @@ class NetworkFilter
      * corresponding Refbox command, based on which team we are (blue or yellow).
      *
      * @param command a referee command from the protobuf message
-     * @return a ROS message RefboxCommand constant corresponding to the input command
+     * @return a RefboxCommand constant for the corresponding Refbox command
      */
     RefboxGameState getTeamCommand(const Referee::Command &command);
 };

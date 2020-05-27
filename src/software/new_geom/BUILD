@@ -11,6 +11,7 @@ cc_library(
     hdrs = ["segment.h"],
     deps = [
         ":point",
+        "//software/new_geom/util:almost_equal",
         "//software/new_geom/util:collinear",
     ],
 )
@@ -105,6 +106,14 @@ cc_library(
         ":angle",
         ":geom_constants",
         ":vector",
+    ],
+)
+
+cc_library(
+    name = "point_boost_geometry_compatability",
+    hdrs = ["point_boost_geometry_compatability.h"],
+    deps = [
+        ":point",
         "@boost//:geometry",
         "@boost//:polygon",
     ],
@@ -245,6 +254,7 @@ cc_test(
     ],
     deps = [
         ":convex_polygon",
+        "//software/test_util",
         "@gtest//:gtest_main",
     ],
 )

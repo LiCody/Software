@@ -1,5 +1,8 @@
 #include "software/new_geom/util/distance.h"
 
+#define POINT_BOOST_COMPATABILITY_THIS_IS_NOT_IN_A_HEADER
+#include "software/new_geom/point_boost_geometry_compatability.h"
+
 double distance(const Line &first, const Point &second)
 {
     Line::Coeffs coeffs = first.getCoeffs();
@@ -72,6 +75,18 @@ double distance(const Polygon &first, const Point &second)
     return distance(second, first);
 }
 
+double distance(const Point &first, const Circle &second)
+{
+    double distance_from_edge =
+        (distance(first, second.getOrigin()) - second.getRadius());
+    return distance_from_edge > 0 ? distance_from_edge : 0;
+}
+
+double distance(const Circle &first, const Point &second)
+{
+    return distance(second, first);
+}
+
 double distanceSquared(const Point &first, const Segment &second)
 {
     double seg_lensq          = distanceSquared(second.getSegStart(), second.getEnd());
@@ -84,7 +99,7 @@ double distanceSquared(const Point &first, const Segment &second)
         second.reverse().toVector().dot(seg_end_to_point) > 0)
     {
         bool is_degenerate = distanceSquared(second.getSegStart(), second.getEnd()) <
-                             GeomConstants::EPSILON;
+                             GeomConstants::FIXED_EPSILON;
         if (is_degenerate)
         {
             return seg_start_to_point.length();

@@ -1,6 +1,6 @@
 #include "software/new_geom/convex_polygon.h"
 
-#include <string>
+#include <algorithm>
 
 ConvexPolygon::ConvexPolygon(const std::vector<Point>& points) : Polygon(points)
 {
@@ -50,25 +50,25 @@ bool ConvexPolygon::isConvex()
 
         // Calculate sign flips using the next edge vector ("next_to_curr"),
         // recording the first sign
-        if (next_to_curr.x() > GeomConstants::EPSILON)
+        if (next_to_curr.x() > GeomConstants::FIXED_EPSILON)
         {
             if (x_sign == 0)
             {
                 x_first_sign = 1;
             }
-            else if (x_sign < -GeomConstants::EPSILON)
+            else if (x_sign < -GeomConstants::FIXED_EPSILON)
             {
                 x_flips = x_flips + 1;
             }
             x_sign = 1;
         }
-        else if (next_to_curr.x() < -GeomConstants::EPSILON)
+        else if (next_to_curr.x() < -GeomConstants::FIXED_EPSILON)
         {
             if (x_sign == 0)
             {
                 x_first_sign = -1;
             }
-            else if (x_sign > GeomConstants::EPSILON)
+            else if (x_sign > GeomConstants::FIXED_EPSILON)
             {
                 x_flips = x_flips + 1;
             }
@@ -80,25 +80,25 @@ bool ConvexPolygon::isConvex()
             return false;
         }
 
-        if (next_to_curr.y() > GeomConstants::EPSILON)
+        if (next_to_curr.y() > GeomConstants::FIXED_EPSILON)
         {
             if (y_sign == 0)
             {
                 y_first_sign = 1;
             }
-            else if (y_sign < -GeomConstants::EPSILON)
+            else if (y_sign < -GeomConstants::FIXED_EPSILON)
             {
                 y_flips = y_flips + 1;
             }
             y_sign = 1;
         }
-        else if (next_to_curr.y() < -GeomConstants::EPSILON)
+        else if (next_to_curr.y() < -GeomConstants::FIXED_EPSILON)
         {
             if (y_sign == 0)
             {
                 y_first_sign = -1;
             }
-            else if (y_sign > GeomConstants::EPSILON)
+            else if (y_sign > GeomConstants::FIXED_EPSILON)
             {
                 y_flips = y_flips + 1;
             }
@@ -118,11 +118,13 @@ bool ConvexPolygon::isConvex()
         {
             w_sign = w;
         }
-        else if (w_sign > GeomConstants::EPSILON && w < -GeomConstants::EPSILON)
+        else if (w_sign > GeomConstants::FIXED_EPSILON &&
+                 w < -GeomConstants::FIXED_EPSILON)
         {
             return false;
         }
-        else if (w_sign < -GeomConstants::EPSILON && w > GeomConstants::EPSILON)
+        else if (w_sign < -GeomConstants::FIXED_EPSILON &&
+                 w > GeomConstants::FIXED_EPSILON)
         {
             return false;
         }
@@ -164,4 +166,98 @@ double ConvexPolygon::area() const
     }
 
     return std::abs(first_term - second_term) / 2;
+}
+
+Point ConvexPolygon::centroid() const
+{
+    // Explanation of the math/geometry behind this:
+    // https://fotino.me/calculating-centroids/
+    double x_centre    = 0;
+    double y_centre    = 0;
+    double signed_area = 0;
+
+    for (unsigned i = 0; i < points_.size(); i++)
+    {
+        double x0 = points_[i].x();
+        double y0 = points_[i].y();
+        double x1 = points_[(i + 1) % points_.size()].x();
+        double y1 = points_[(i + 1) % points_.size()].y();
+        double a  = (x0 * y1) - (x1 * y0);
+
+        x_centre += (x0 + x1) * a;
+        y_centre += (y0 + y1) * a;
+        signed_area += a;
+    }
+
+    return Point((Vector(x_centre, y_centre) / (3 * signed_area)));
+}
+
+ConvexPolygon ConvexPolygon::expand(const Vector& expansion_vector) const
+{
+    // ASCII art showing an expanded ConvexPolygon
+    //
+    // Original ConvexPolygon:
+    //
+    //            B---------C
+    //            |         |
+    //            |         |
+    //            A---------D
+    //
+    //                 |
+    //                 V
+    //          expansion vector
+    //
+    // Expanded ConvexPolygon (A and D are shifted down):
+    //
+    //            B---------C
+    //            |         |
+    //            |         |
+    //            |         |
+    //            A'--------D'
+    //
+
+    std::vector<Point> expanded_points;
+    Point centroid_point = centroid();
+
+    // left and right is with respect to the vector pointing straight up
+    enum SideOfDividingLine
+    {
+        LEFT,
+        RIGHT,
+        ON_THE_LINE
+    };
+
+    // For a dividing line through centroid_point and perpendicular to the
+    // expansion_vector, returns which side of the line the point p is on
+    auto side_of_dividing_line = [&](const Point& p) {
+        double d = (p - centroid_point).cross(expansion_vector.perpendicular());
+        if (d == 0)
+        {
+            return SideOfDividingLine::ON_THE_LINE;
+        }
+        else if (d < 0)
+        {
+            return SideOfDividingLine::LEFT;
+        }
+        else
+        {
+            return SideOfDividingLine::RIGHT;
+        }
+    };
+
+    SideOfDividingLine side_of_dividing_line_of_expansion_vector =
+        side_of_dividing_line(centroid_point + expansion_vector);
+
+    for (const auto& point : points_)
+    {
+        if (side_of_dividing_line(point) == side_of_dividing_line_of_expansion_vector)
+        {
+            expanded_points.push_back(point + expansion_vector);
+        }
+        else
+        {
+            expanded_points.push_back(point);
+        }
+    }
+    return ConvexPolygon(expanded_points);
 }

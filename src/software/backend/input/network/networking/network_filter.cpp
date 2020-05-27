@@ -10,7 +10,7 @@
 // We can initialize the field_state with all zeroes here because this state will never
 // be accessed by an external observer to this class. the getFieldData must be called to
 // get any field data which will update the state with the given protobuf data
-NetworkFilter::NetworkFilter()
+NetworkFilter::NetworkFilter(std::shared_ptr<const RefboxConfig> refbox_config)
     : field_state(0, 0, 0, 0, 0, 0, 0, Timestamp::fromSeconds(0)),
       ball_state(Point(), Vector(), Timestamp::fromSeconds(0)),
       friendly_team_state(Duration::fromMilliseconds(
@@ -20,7 +20,8 @@ NetworkFilter::NetworkFilter()
       ball_filter(BallFilter::DEFAULT_MIN_BUFFER_SIZE,
                   BallFilter::DEFAULT_MAX_BUFFER_SIZE),
       friendly_team_filter(),
-      enemy_team_filter()
+      enemy_team_filter(),
+      refbox_config(refbox_config)
 {
 }
 
@@ -117,7 +118,7 @@ Field NetworkFilter::createFieldFromPacketGeometry(
     return field;
 }
 
-BallState NetworkFilter::getFilteredBallData(
+TimestampedBallState NetworkFilter::getFilteredBallData(
     const std::vector<SSL_DetectionFrame> &detections)
 {
     auto ball_detections = std::vector<BallDetection>();
@@ -132,21 +133,10 @@ BallState NetworkFilter::getFilteredBallData(
                 Point(ball.x() * METERS_PER_MILLIMETER, ball.y() * METERS_PER_MILLIMETER);
             ball_detection.timestamp = Timestamp::fromSeconds(detection.t_capture());
 
-            // TODO remove Util::DynamicParameters as part of
-            // https://github.com/UBC-Thunderbots/Software/issues/960
             bool ball_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > ball_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < ball_detection.position.x();
-            bool ignore_ball = Util::DynamicParameters->getAIControlConfig()
-                                   ->getRefboxConfig()
-                                   ->IgnoreInvalidCameraData()
-                                   ->value() &&
+                refbox_config->MinValidX()->value() > ball_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < ball_detection.position.x();
+            bool ignore_ball = refbox_config->IgnoreInvalidCameraData()->value() &&
                                ball_position_invalid;
             if (!ignore_ball)
             {
@@ -174,12 +164,7 @@ Team NetworkFilter::getFilteredFriendlyTeamData(
     for (const auto &detection : detections)
     {
         auto ssl_robots = detection.robots_yellow();
-        // TODO remove Util::DynamicParameters as part of
-        // https://github.com/UBC-Thunderbots/Software/issues/960
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             ssl_robots = detection.robots_blue();
         }
@@ -199,18 +184,9 @@ Team NetworkFilter::getFilteredFriendlyTeamData(
 
 
             bool robot_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > robot_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < robot_detection.position.x();
-            bool ignore_robot = Util::DynamicParameters->getAIControlConfig()
-                                    ->getRefboxConfig()
-                                    ->IgnoreInvalidCameraData()
-                                    ->value() &&
+                refbox_config->MinValidX()->value() > robot_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < robot_detection.position.x();
+            bool ignore_robot = refbox_config->IgnoreInvalidCameraData()->value() &&
                                 robot_position_invalid;
             if (!ignore_robot)
             {
@@ -235,10 +211,7 @@ Team NetworkFilter::getFilteredEnemyTeamData(
     for (const auto &detection : detections)
     {
         auto ssl_robots = detection.robots_blue();
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             ssl_robots = detection.robots_yellow();
         }
@@ -257,18 +230,9 @@ Team NetworkFilter::getFilteredEnemyTeamData(
             robot_detection.timestamp  = Timestamp::fromSeconds(detection.t_capture());
 
             bool robot_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > robot_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < robot_detection.position.x();
-            bool ignore_robot = Util::DynamicParameters->getAIControlConfig()
-                                    ->getRefboxConfig()
-                                    ->IgnoreInvalidCameraData()
-                                    ->value() &&
+                refbox_config->MinValidX()->value() > robot_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < robot_detection.position.x();
+            bool ignore_robot = refbox_config->IgnoreInvalidCameraData()->value() &&
                                 robot_position_invalid;
             if (!ignore_robot)
             {
@@ -289,7 +253,7 @@ RefboxGameState NetworkFilter::getRefboxGameState(const Referee &packet)
     return getTeamCommand(packet.command());
 }
 
-// this maps a protobuf Referee_Command enum to its ROS message equivalent
+// this maps a protobuf Referee_Command enum to its equivalent internal type
 // this map is used when we are on the blue team
 const static std::unordered_map<Referee::Command, RefboxGameState> blue_team_command_map =
     {{Referee_Command_HALT, RefboxGameState::HALT},
@@ -311,7 +275,7 @@ const static std::unordered_map<Referee::Command, RefboxGameState> blue_team_com
      {Referee_Command_BALL_PLACEMENT_BLUE, RefboxGameState::BALL_PLACEMENT_US},
      {Referee_Command_BALL_PLACEMENT_YELLOW, RefboxGameState::BALL_PLACEMENT_THEM}};
 
-// this maps a protobuf Referee_Command enum to its ROS message equivalent
+// this maps a protobuf Referee_Command enum to its equivalent internal type
 // this map is used when we are on the yellow team
 const static std::unordered_map<Referee::Command, RefboxGameState>
     yellow_team_command_map = {
@@ -336,10 +300,7 @@ const static std::unordered_map<Referee::Command, RefboxGameState>
 
 RefboxGameState NetworkFilter::getTeamCommand(const Referee::Command &command)
 {
-    if (!Util::DynamicParameters->getAIControlConfig()
-             ->getRefboxConfig()
-             ->FriendlyColorYellow()
-             ->value())
+    if (!refbox_config->FriendlyColorYellow()->value())
     {
         return blue_team_command_map.at(command);
     }
@@ -353,10 +314,7 @@ void NetworkFilter::setOurFieldSide(bool blue_team_on_positive_half)
 {
     if (blue_team_on_positive_half)
     {
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             our_field_side = FieldSide::NEG_X;
         }
@@ -367,10 +325,7 @@ void NetworkFilter::setOurFieldSide(bool blue_team_on_positive_half)
     }
     else
     {
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             our_field_side = FieldSide::POS_X;
         }

@@ -5,18 +5,18 @@
 #include <thread>
 
 #include "software/backend/input/network/networking/network_filter.h"
-#include "software/backend/input/network/networking/ssl_gamecontroller_client.h"
-#include "software/backend/input/network/networking/ssl_vision_client.h"
+#include "software/networking/proto_multicast_listener.h"
 #include "software/parameter/config.hpp"
 #include "software/proto/messages_robocup_ssl_wrapper.pb.h"
 #include "software/proto/ssl_referee.pb.h"
 #include "software/world/world.h"
 
 /**
- * This class encapsulates our SSLVisionClient and SSLGameController clients to abstract
- * all networking operations behind a single interface. This also allows us to keep the
- * "handle" functions we give to the clients as member functions rather than large lambda
- * functions. Overall, this helps keep our main.cpp file shorter and more readable.
+ * This class encapsulates our ProtoMulticastListener<SSL_WrapperPacket> and
+ * SSLGameController clients to abstract all networking operations behind a single
+ * interface. This also allows us to keep the "handle" functions we give to the clients as
+ * member functions rather than large lambda functions. Overall, this helps keep our
+ * main.cpp file shorter and more readable.
  */
 class NetworkClient
 {
@@ -39,6 +39,7 @@ class NetworkClient
                            std::string gamecontroller_multicast_address,
                            int gamecontroller_multicast_port,
                            std::function<void(World)> received_world_callback,
+                           std::shared_ptr<const RefboxConfig> refbox_config,
                            std::shared_ptr<const CameraConfig> camera_config);
 
     /**
@@ -97,8 +98,8 @@ class NetworkClient
      * Filters and publishes the new vision data
      *
      * This function contains all the work that is performed every time a new vision
-     * packet is received from the network. We give this function to the SSLVisionClient
-     * to call
+     * packet is received from the network. We give this function to the
+     * ProtoMulticastListener<SSL_WrapperPacket> to call
      *
      * @param packet The newly received vision packet
      */
@@ -126,10 +127,10 @@ class NetworkClient
     NetworkFilter network_filter;
 
     // The client that handles data reception, filtering, and publishing for vision data
-    std::unique_ptr<SSLVisionClient> ssl_vision_client;
+    std::unique_ptr<ProtoMulticastListener<SSL_WrapperPacket>> ssl_vision_client;
     // The client that handles data reception, filtering , and publishing for
     // gamecontroller data
-    std::unique_ptr<SSLGameControllerClient> ssl_gamecontroller_client;
+    std::unique_ptr<ProtoMulticastListener<Referee>> ssl_gamecontroller_client;
 
     // The most up-to-date state of the world
     World world;
@@ -152,5 +153,6 @@ class NetworkClient
     // The callback function that we pass newly received/filtered worlds to
     std::function<void(World)> received_world_callback;
 
+    std::shared_ptr<const RefboxConfig> refbox_config;
     std::shared_ptr<const CameraConfig> camera_config;
 };

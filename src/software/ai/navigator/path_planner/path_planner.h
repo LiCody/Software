@@ -1,4 +1,6 @@
 #pragma once
+
+#include <optional>
 #include <vector>
 
 #include "software/ai/navigator/obstacle/obstacle.h"
@@ -32,7 +34,7 @@ class PathPlanner
      */
     virtual std::optional<Path> findPath(const Point &start, const Point &destination,
                                          const Rectangle &navigable_area,
-                                         const std::vector<Obstacle> &obstacles) = 0;
+                                         const std::vector<ObstaclePtr> &obstacles) = 0;
 
     virtual ~PathPlanner() = default;
 };

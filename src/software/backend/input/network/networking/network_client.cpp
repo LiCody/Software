@@ -1,10 +1,10 @@
 #include "software/backend/input/network/networking/network_client.h"
 
 #include <boost/bind.hpp>
-#include <g3log/g3log.hpp>
 #include <limits>
 
 #include "software/constants.h"
+#include "software/logger/logger.h"
 #include "software/parameter/config.hpp"
 #include "software/parameter/dynamic_parameters.h"
 
@@ -13,12 +13,14 @@ NetworkClient::NetworkClient(std::string vision_multicast_address,
                              std::string gamecontroller_multicast_address,
                              int gamecontroller_multicast_port,
                              std::function<void(World)> received_world_callback,
+                             std::shared_ptr<const RefboxConfig> refbox_config,
                              std::shared_ptr<const CameraConfig> camera_config)
-    : network_filter(),
+    : network_filter(refbox_config),
       io_service(),
       last_valid_t_capture(std::numeric_limits<double>::max()),
       initial_packet_count(0),
       received_world_callback(received_world_callback),
+      refbox_config(refbox_config),
       camera_config(camera_config)
 {
     setupVisionClient(vision_multicast_address, vision_multicast_port);
@@ -34,7 +36,7 @@ void NetworkClient::setupVisionClient(std::string vision_address, int vision_por
     // Set up our connection over udp to receive vision packets
     try
     {
-        ssl_vision_client = std::make_unique<SSLVisionClient>(
+        ssl_vision_client = std::make_unique<ProtoMulticastListener<SSL_WrapperPacket>>(
             io_service, vision_address, vision_port,
             boost::bind(&NetworkClient::filterAndPublishVisionDataWrapper, this, _1));
     }
@@ -53,7 +55,7 @@ void NetworkClient::setupGameControllerClient(std::string gamecontroller_address
     // Set up our connection over udp to receive gamecontroller packets
     try
     {
-        ssl_gamecontroller_client = std::make_unique<SSLGameControllerClient>(
+        ssl_gamecontroller_client = std::make_unique<ProtoMulticastListener<Referee>>(
             io_service, gamecontroller_address, gamecontroller_port,
             boost::bind(&NetworkClient::filterAndPublishGameControllerData, this, _1));
     }
@@ -127,72 +129,66 @@ void NetworkClient::filterAndPublishVisionData(SSL_WrapperPacket packet)
         world.updateFieldGeometry(field);
     }
 
-    if (packet.has_detection())
+    if (world.field().isValid())
     {
-        SSL_DetectionFrame detection = *packet.mutable_detection();
-        bool camera_disabled         = false;
-
-        // We invert the field side if we explicitly choose to override the values
-        // provided by refbox. The 'defending_positive_side' parameter dictates the side
-        // we are defending if we are overriding the value
-        // TODO remove as part of https://github.com/UBC-Thunderbots/Software/issues/960
-        if (Util::DynamicParameters->getAIControlConfig()
-                ->getRefboxConfig()
-                ->OverrideRefboxDefendingSide()
-                ->value() &&
-            Util::DynamicParameters->getAIControlConfig()
-                ->getRefboxConfig()
-                ->DefendingPositiveSide()
-                ->value())
+        if (packet.has_detection())
         {
-            invertFieldSide(detection);
+            SSL_DetectionFrame detection = *packet.mutable_detection();
+            bool camera_disabled         = false;
+
+            // We invert the field side if we explicitly choose to override the values
+            // provided by refbox. The 'defending_positive_side' parameter dictates the
+            // side we are defending if we are overriding the value
+            if (refbox_config->OverrideRefboxDefendingSide()->value() &&
+                refbox_config->DefendingPositiveSide()->value())
+            {
+                invertFieldSide(detection);
+            }
+            // TODO remove as part of
+            // https://github.com/UBC-Thunderbots/Software/issues/960
+            switch (detection.camera_id())
+            {
+                case 0:
+                    camera_disabled = camera_config->IgnoreCamera_0()->value();
+                    break;
+                case 1:
+                    camera_disabled = camera_config->IgnoreCamera_1()->value();
+                    break;
+                case 2:
+                    camera_disabled = camera_config->IgnoreCamera_2()->value();
+                    break;
+                case 3:
+                    camera_disabled = camera_config->IgnoreCamera_3()->value();
+                    break;
+                default:
+                    LOG(WARNING)
+                        << "An unkown camera id was detected, disabled by default "
+                        << "id: " << detection.camera_id() << std::endl;
+                    camera_disabled = true;
+                    break;
+            }
+
+            if (!camera_disabled)
+            {
+                TimestampedBallState ball_state =
+                    network_filter.getFilteredBallData({detection});
+                world.updateBallStateWithTimestamp(ball_state);
+
+                Team friendly_team =
+                    network_filter.getFilteredFriendlyTeamData({detection});
+                int friendly_goalie_id = refbox_config->FriendlyGoalieId()->value();
+                friendly_team.assignGoalie(friendly_goalie_id);
+                world.mutableFriendlyTeam() = friendly_team;
+
+                Team enemy_team = network_filter.getFilteredEnemyTeamData({detection});
+                int enemy_goalie_id = refbox_config->EnemyGoalieId()->value();
+                enemy_team.assignGoalie(enemy_goalie_id);
+                world.mutableEnemyTeam() = enemy_team;
+            }
         }
 
-        switch (detection.camera_id())
-        {
-            case 0:
-                camera_disabled = camera_config->IgnoreCamera_0()->value();
-                break;
-            case 1:
-                camera_disabled = camera_config->IgnoreCamera_1()->value();
-                break;
-            case 2:
-                camera_disabled = camera_config->IgnoreCamera_2()->value();
-                break;
-            case 3:
-                camera_disabled = camera_config->IgnoreCamera_3()->value();
-                break;
-            default:
-                LOG(WARNING) << "An unkown camera id was detected, disabled by default "
-                             << "id: " << detection.camera_id() << std::endl;
-                camera_disabled = true;
-                break;
-        }
-
-        if (!camera_disabled)
-        {
-            BallState ball_state = network_filter.getFilteredBallData({detection});
-            world.updateBallState(ball_state);
-
-            Team friendly_team = network_filter.getFilteredFriendlyTeamData({detection});
-            int friendly_goalie_id = Util::DynamicParameters->getAIControlConfig()
-                                         ->getRefboxConfig()
-                                         ->FriendlyGoalieId()
-                                         ->value();
-            friendly_team.assignGoalie(friendly_goalie_id);
-            world.mutableFriendlyTeam() = friendly_team;
-
-            Team enemy_team     = network_filter.getFilteredEnemyTeamData({detection});
-            int enemy_goalie_id = Util::DynamicParameters->getAIControlConfig()
-                                      ->getRefboxConfig()
-                                      ->EnemyGoalieId()
-                                      ->value();
-            enemy_team.assignGoalie(enemy_goalie_id);
-            world.mutableEnemyTeam() = enemy_team;
-        }
+        received_world_callback(world);
     }
-
-    received_world_callback(world);
 }
 
 void NetworkClient::filterAndPublishGameControllerData(Referee packet)
@@ -200,7 +196,10 @@ void NetworkClient::filterAndPublishGameControllerData(Referee packet)
     RefboxGameState game_state = network_filter.getRefboxGameState(packet);
     world.updateRefboxGameState(game_state);
 
-    received_world_callback(world);
+    if (world.field().isValid())
+    {
+        received_world_callback(world);
+    }
 }
 
 void NetworkClient::invertFieldSide(SSL_DetectionFrame& frame)
