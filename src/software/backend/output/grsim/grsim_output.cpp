@@ -1,35 +1,25 @@
 #include "software/backend/output/grsim/grsim_output.h"
 
 #include <chrono>
-#include <g3log/g3log.hpp>
 #include <optional>
 
 #include "shared/constants.h"
-#include "software/ai/primitive/primitive.h"
 #include "software/backend/output/grsim/command_primitive_visitor/grsim_command_primitive_visitor.h"
 #include "software/backend/output/grsim/command_primitive_visitor/motion_controller.h"
+#include "software/logger/logger.h"
 #include "software/parameter/dynamic_parameters.h"
+#include "software/primitive/primitive.h"
 #include "software/proto/grSim_Commands.pb.h"
 #include "software/proto/grSim_Replacement.pb.h"
+#include "software/util/variant_visitor/variant_visitor.h"
 #include "software/world/team.h"
 
 
 using namespace boost::asio;
 
-// Creates a struct which inherits all lambda function given to it and uses their
-// Ts::operator(). This can be passed to std::visit to easily write multiple different
-// lambdas for each type of motion controller commands below. See
-// https://en.cppreference.com/w/cpp/utility/variant/visit for more details.
-template <class... Ts>
-struct overload : Ts...
-{
-    using Ts::operator()...;
-};
-template <class... Ts>
-overload(Ts...)->overload<Ts...>;
-
-GrSimOutput::GrSimOutput(std::string network_address, unsigned short port)
-    : network_address(network_address), port(port), socket(io_service)
+GrSimOutput::GrSimOutput(std::string network_address, unsigned short port,
+                         std::shared_ptr<const RefboxConfig> config)
+    : network_address(network_address), port(port), config(config), socket(io_service)
 {
     socket.open(ip::udp::v4());
     remote_endpoint =
@@ -104,11 +94,7 @@ void GrSimOutput::sendPrimitives(
 
             // send the velocity data via grsim_packet
             grSim_Packet grsim_packet = createGrSimPacketWithRobotVelocity(
-                prim->getRobotId(),
-                Util::DynamicParameters->getAIControlConfig()
-                    ->getRefboxConfig()
-                    ->FriendlyColorYellow()
-                    ->value(),
+                prim->getRobotId(), config->FriendlyColorYellow()->value(),
                 robot_velocities.linear_velocity, robot_velocities.angular_velocity,
                 kick_speed_meters_per_second, chip_instead_of_kick, dribbler_on);
 
@@ -151,28 +137,6 @@ grSim_Packet GrSimOutput::createGrSimPacketWithRobotVelocity(
     robot_command->set_spinner(dribbler_on);
 
     return packet;
-}
-
-void GrSimOutput::setBallState(Point destination, Vector velocity)
-{
-    sendGrSimPacket(createGrSimReplacementWithBallState(destination, velocity));
-}
-
-grSim_Packet GrSimOutput::createGrSimReplacementWithBallState(Point destination,
-                                                              Vector velocity)
-{
-    grSim_Packet packet;
-    // grSim_Replacement* replacement          = packet.mutable_replacement();
-    // grSim_BallReplacement* ball_replacement = replacement->mutable_ball();
-    // ball_replacement->set_x(destination.x());
-    // ball_replacement->set_y(destination.y());
-    // ball_replacement->set_vx(velocity.x());
-    // ball_replacement->set_vy(velocity.y());
-    packet.mutable_replacement()->mutable_ball()->set_x(destination.x());
-    packet.mutable_replacement()->mutable_ball()->set_y(destination.y());
-    packet.mutable_replacement()->mutable_ball()->set_vx(velocity.x());
-    packet.mutable_replacement()->mutable_ball()->set_vy(velocity.y());
-    return (packet);
 }
 
 void GrSimOutput::sendGrSimPacket(const grSim_Packet& packet)

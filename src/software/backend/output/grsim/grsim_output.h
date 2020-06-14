@@ -3,9 +3,10 @@
 #include <boost/asio.hpp>
 #include <string>
 
-#include "software/ai/primitive/primitive.h"
 #include "software/new_geom/angle.h"
 #include "software/new_geom/point.h"
+#include "software/parameter/config.hpp"
+#include "software/primitive/primitive.h"
 #include "software/proto/grSim_Packet.pb.h"
 #include "software/world/ball.h"
 #include "software/world/team.h"
@@ -20,7 +21,8 @@ class GrSimOutput
      * @param network_address The IP address to publish grSim commands to
      * @param port The port to publish commands to
      */
-    explicit GrSimOutput(std::string network_address, unsigned short port);
+    explicit GrSimOutput(std::string network_address, unsigned short port,
+                         std::shared_ptr<const RefboxConfig> config);
 
     ~GrSimOutput();
 
@@ -69,24 +71,6 @@ class GrSimOutput
                                                     AngularVelocity angular_velocity,
                                                     double kick_speed_meters_per_second,
                                                     bool chip, bool dribbler_on) const;
-    /**
-     * Sends a ball replacement grSim_packet to grSim using sendGrSimPacket
-     *
-     * @param position the new position of the ball
-     * @param velocity the new velocity of the ball
-     */
-
-    void setBallState(Point destination, Vector velocity);
-
-    /**
-     * Takes a position and velocity vector for the ball
-     * and use these to construct a grSim_packet with a replacement command.
-     *
-     * @param position the new position of the ball
-     * @param velocity the new velocity of the ball
-     */
-
-    grSim_Packet createGrSimReplacementWithBallState(Point destination, Vector velocity);
 
    private:
     /**
@@ -99,6 +83,7 @@ class GrSimOutput
     // Variables for networking
     std::string network_address;
     unsigned short port;
+    std::shared_ptr<const RefboxConfig> config;
     boost::asio::io_service io_service;
     boost::asio::ip::udp::socket socket;
     boost::asio::ip::udp::endpoint remote_endpoint;

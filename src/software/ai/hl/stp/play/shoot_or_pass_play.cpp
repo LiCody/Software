@@ -1,19 +1,18 @@
 #include "software/ai/hl/stp/play/shoot_or_pass_play.h"
 
-#include <g3log/g3log.hpp>
-
 #include "shared/constants.h"
 #include "software/ai/evaluation/calc_best_shot.h"
 #include "software/ai/evaluation/possession.h"
-#include "software/ai/hl/stp/play/play_factory.h"
 #include "software/ai/hl/stp/tactic/cherry_pick_tactic.h"
 #include "software/ai/hl/stp/tactic/move_tactic.h"
 #include "software/ai/hl/stp/tactic/passer_tactic.h"
 #include "software/ai/hl/stp/tactic/receiver_tactic.h"
 #include "software/ai/hl/stp/tactic/shoot_goal_tactic.h"
 #include "software/ai/passing/pass_generator.h"
+#include "software/logger/logger.h"
 #include "software/parameter/dynamic_parameters.h"
-#include "src/g3log/loglevels.hpp"
+#include "software/util/design_patterns/generic_factory.h"
+
 
 using namespace Passing;
 
@@ -28,24 +27,19 @@ std::string ShootOrPassPlay::getName() const
 
 bool ShootOrPassPlay::isApplicable(const World &world) const
 {
-    bool use_shoot_or_pass_instead_of_shoot_or_chip =
-        Util::DynamicParameters->getAIConfig()
-            ->getHighLevelStrategyConfig()
-            ->UseShootOrPassInsteadOfShootOrChip()
-            ->value();
-
-    return use_shoot_or_pass_instead_of_shoot_or_chip && world.gameState().isPlaying() &&
-           Evaluation::teamHasPossession(world, world.friendlyTeam());
+    return world.gameState().isPlaying() &&
+           teamHasPossession(world, world.friendlyTeam());
 }
 
 bool ShootOrPassPlay::invariantHolds(const World &world) const
 {
     return world.gameState().isPlaying() &&
-           (!Evaluation::teamHasPossession(world, world.enemyTeam()) ||
-            Evaluation::teamPassInProgress(world, world.friendlyTeam()));
+           (!teamHasPossession(world, world.enemyTeam()) ||
+            teamPassInProgress(world, world.friendlyTeam()));
 }
 
-void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield)
+void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield,
+                                     const World &world)
 {
     /**
      * There are two main stages to this Play:
@@ -73,10 +67,8 @@ void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield)
 
     // If the passing is coming from the friendly end, we split the cherry-pickers
     // across the x-axis in the enemy half
-    Rectangle cherry_pick_1_target_region(world.field().centerPoint(),
-                                          world.field().enemyCornerPos());
-    Rectangle cherry_pick_2_target_region(world.field().centerPoint(),
-                                          world.field().enemyCornerNeg());
+    Rectangle cherry_pick_1_target_region = world.field().enemyPositiveYQuadrant();
+    Rectangle cherry_pick_2_target_region = world.field().enemyNegativeYQuadrant();
 
     // Otherwise, the pass is coming from the enemy end, put the two cherry-pickers
     // on the opposite side of the x-axis to wherever the pass is coming from
@@ -111,8 +103,7 @@ void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield)
     // of the field
     PassGenerator pass_generator(world, world.ball().position(),
                                  PassType::RECEIVE_AND_DRIBBLE);
-    pass_generator.setTargetRegion(
-        Rectangle(Point(0, world.field().yLength() / 2), world.field().enemyCornerNeg()));
+    pass_generator.setTargetRegion(world.field().enemyHalf());
     PassWithRating best_pass_and_score_so_far = pass_generator.getBestPassSoFar();
 
     // Wait for a good pass by starting out only looking for "perfect" passes (with a
@@ -135,7 +126,7 @@ void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield)
                                                ->value();
     do
     {
-        updatePassGenerator(pass_generator);
+        updatePassGenerator(pass_generator, world);
 
         LOG(DEBUG) << "Best pass so far is: " << best_pass_and_score_so_far.pass;
         LOG(DEBUG) << "      with score of: " << best_pass_and_score_so_far.rating;
@@ -208,11 +199,13 @@ void ShootOrPassPlay::getNextTactics(TacticCoroutine::push_type &yield)
     LOG(DEBUG) << "Finished";
 }
 
-void ShootOrPassPlay::updatePassGenerator(PassGenerator &pass_generator)
+void ShootOrPassPlay::updatePassGenerator(Passing::PassGenerator &pass_generator,
+                                          const World &world)
 {
     pass_generator.setWorld(world);
     pass_generator.setPasserPoint(world.ball().position());
 }
 
-// Register this play in the PlayFactory
-static TPlayFactory<ShootOrPassPlay> factory;
+
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Play, ShootOrPassPlay> factory;

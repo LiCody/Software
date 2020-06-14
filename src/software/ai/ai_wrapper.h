@@ -2,9 +2,9 @@
 
 #include "software/ai/ai.h"
 #include "software/ai/hl/stp/play_info.h"
+#include "software/gui/visualizer/drawing/draw_functions.h"
 #include "software/multithreading/subject.h"
 #include "software/multithreading/threaded_observer.h"
-#include "software/visualizer/drawing/draw_functions.h"
 #include "software/world/world.h"
 
 /**
@@ -25,7 +25,8 @@ class AIWrapper : public ThreadedObserver<World>,
      *
      * @param config The AI configuration
      */
-    explicit AIWrapper(std::shared_ptr<const AIConfig> config);
+    explicit AIWrapper(std::shared_ptr<const AIConfig> ai_config,
+                       std::shared_ptr<const AIControlConfig> control_config);
 
    private:
     void onValueReceived(World world) override;
@@ -38,5 +39,6 @@ class AIWrapper : public ThreadedObserver<World>,
     void drawAI();
 
     AI ai;
-    World most_recent_world;
+    std::shared_ptr<const AIControlConfig> control_config;
+    std::optional<World> most_recent_world;
 };

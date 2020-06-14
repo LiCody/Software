@@ -8,20 +8,30 @@ cc_library(
         "//software/ai/hl",
         "//software/ai/hl/stp/action:action_world_params_update_visitor",
         "//software/ai/hl/stp/play",
-        "//software/ai/hl/stp/play:play_factory",
         "//software/ai/hl/stp/tactic",
         "//software/ai/hl/stp/tactic:tactic_world_params_update_visitor",
         "//software/ai/intent:stop_intent",
         "//software/ai/motion_constraint:motion_constraint_manager",
         "//software/parameter:dynamic_parameters",
+        "//software/util/design_patterns:generic_factory",
         "@munkres_cpp",
     ],
 )
 
 cc_library(
     name = "play_info",
+    srcs = ["play_info.cpp"],
     hdrs = ["play_info.h"],
     deps = [],
+)
+
+cc_test(
+    name = "play_info_test",
+    srcs = ["play_info_test.cpp"],
+    deps = [
+        ":play_info",
+        "@gtest//:gtest_main",
+    ],
 )
 
 cc_test(
@@ -55,10 +65,10 @@ cc_test(
     srcs = ["stp_test.cpp"],
     deps = [
         ":stp",
-        "//software/ai/hl/stp/play:play_factory",
         "//software/ai/hl/stp/play/test_plays:halt_test_play",
         "//software/ai/hl/stp/play/test_plays:move_test_play",
         "//software/test_util",
+        "//software/util/design_patterns:generic_factory",
         "@gtest//:gtest_main",
     ],
 )

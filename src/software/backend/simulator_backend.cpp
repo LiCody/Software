@@ -4,13 +4,14 @@
 
 #include <algorithm>
 
-#include "software/backend/backend_factory.h"
-#include "software/logger/init.h"
+#include "software/logger/logger.h"
+#include "software/simulation/simulator.h"
+#include "software/util/design_patterns/generic_factory.h"
 
 const std::string SimulatorBackend::name = "simulator";
 
 SimulatorBackend::SimulatorBackend(
-    const Duration &physics_time_step, const Duration &world_time_increment,
+    const Duration& physics_time_step, const Duration& world_time_increment,
     SimulatorBackend::SimulationSpeed simulation_speed_mode)
     : simulation_thread_started(false),
       in_destructor(false),
@@ -77,7 +78,24 @@ void SimulatorBackend::runSimulationLoop(World world)
     unsigned int num_physics_steps_per_world_published = static_cast<unsigned int>(
         std::ceil(world_time_increment.getSeconds() / physics_time_step.getSeconds()));
 
-    PhysicsSimulator physics_simulator(world);
+    Simulator simulator(world.field());
+    simulator.setBallState(world.ball().currentState().ballState());
+    // Note: The SimulatorBackend currently maintains the invariant that the
+    // friendly team is the yellow team
+    // This should be resolved along with
+    // https://github.com/UBC-Thunderbots/Software/issues/1439
+    for (const auto& robot : world.friendlyTeam().getAllRobots())
+    {
+        RobotStateWithId state = {.id          = robot.id(),
+                                  .robot_state = robot.currentState().robotState()};
+        simulator.addYellowRobots({state});
+    }
+    for (const auto& robot : world.enemyTeam().getAllRobots())
+    {
+        RobotStateWithId state = {.id          = robot.id(),
+                                  .robot_state = robot.currentState().robotState()};
+        simulator.addBlueRobots({state});
+    }
 
     auto world_publish_timestamp = std::chrono::steady_clock::now();
 
@@ -92,10 +110,10 @@ void SimulatorBackend::runSimulationLoop(World world)
 
         for (unsigned int i = 0; i < num_physics_steps_per_world_published; i++)
         {
-            physics_simulator.stepSimulation(physics_time_step);
+            simulator.stepSimulation(physics_time_step);
         }
 
-        world = physics_simulator.getWorld();
+        World world = simulator.getWorld();
 
         if (simulation_speed_mode.load() == SimulationSpeed::REALTIME_SIMULATION)
         {
@@ -125,10 +143,12 @@ void SimulatorBackend::runSimulationLoop(World world)
         // have this thread and another running on one core
         std::this_thread::yield();
 
-        // TODO: Simulate the primitives
-        // https://github.com/UBC-Thunderbots/Software/issues/768
         auto primitives = primitive_buffer.popMostRecentlyAddedValue(primitive_timeout);
-        if (!primitives)
+        if (primitives)
+        {
+            simulator.setYellowRobotPrimitives(primitives.value());
+        }
+        else
         {
             LOG(WARNING) << "Simulator Backend timed out waiting for primitives";
         }
@@ -139,5 +159,5 @@ void SimulatorBackend::runSimulationLoop(World world)
     }
 }
 
-// Register this backend in the BackendFactory
-static TBackendFactory<SimulatorBackend> factory;
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Backend, SimulatorBackend> factory;

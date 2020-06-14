@@ -2,13 +2,13 @@
 
 #include "shared/constants.h"
 #include "software/ai/evaluation/enemy_threat.h"
-#include "software/ai/hl/stp/play/play_factory.h"
 #include "software/ai/hl/stp/tactic/crease_defender_tactic.h"
 #include "software/ai/hl/stp/tactic/goalie_tactic.h"
 #include "software/ai/hl/stp/tactic/move_tactic.h"
 #include "software/ai/hl/stp/tactic/shadow_enemy_tactic.h"
 #include "software/ai/hl/stp/tactic/shadow_freekicker_tactic.h"
 #include "software/parameter/dynamic_parameters.h"
+#include "software/util/design_patterns/generic_factory.h"
 #include "software/world/game_state.h"
 
 
@@ -29,7 +29,8 @@ bool EnemyFreekickPlay::invariantHolds(const World &world) const
     return world.gameState().isTheirFreeKick();
 }
 
-void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield)
+void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield,
+                                       const World &world)
 {
     // Init our goalie tactic
     auto goalie_tactic = std::make_shared<GoalieTactic>(
@@ -78,8 +79,8 @@ void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield)
         std::vector<std::shared_ptr<Tactic>> tactics_to_run = {goalie_tactic};
 
         // Get all enemy threats
-        auto enemy_threats = Evaluation::getAllEnemyThreats(
-            world.field(), world.friendlyTeam(), world.enemyTeam(), world.ball(), false);
+        auto enemy_threats = getAllEnemyThreats(world.field(), world.friendlyTeam(),
+                                                world.enemyTeam(), world.ball(), false);
 
         // Add Freekick shadower tactics
         tactics_to_run.emplace_back(shadow_freekicker_1);
@@ -93,12 +94,16 @@ void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield)
         if (enemy_threats.size() == 0)
         {
             move_tactic_main->updateControlParams(
-                world.field().friendlyGoal() + Vector(0, 2 * ROBOT_MAX_RADIUS_METERS),
-                (world.ball().position() - world.field().friendlyGoal()).orientation(),
+                world.field().friendlyGoalCenter() +
+                    Vector(0, 2 * ROBOT_MAX_RADIUS_METERS),
+                (world.ball().position() - world.field().friendlyGoalCenter())
+                    .orientation(),
                 0);
             move_tactic_main->updateControlParams(
-                world.field().friendlyGoal() + Vector(0, -2 * ROBOT_MAX_RADIUS_METERS),
-                (world.ball().position() - world.field().friendlyGoal()).orientation(),
+                world.field().friendlyGoalCenter() +
+                    Vector(0, -2 * ROBOT_MAX_RADIUS_METERS),
+                (world.ball().position() - world.field().friendlyGoalCenter())
+                    .orientation(),
                 0);
 
             tactics_to_run.emplace_back(move_tactic_main);
@@ -109,8 +114,10 @@ void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield)
             shadow_tactic_main->updateControlParams(enemy_threats.at(1),
                                                     ROBOT_MAX_RADIUS_METERS * 3);
             move_tactic_main->updateControlParams(
-                world.field().friendlyGoal() + Vector(0, 2 * ROBOT_MAX_RADIUS_METERS),
-                (world.ball().position() - world.field().friendlyGoal()).orientation(),
+                world.field().friendlyGoalCenter() +
+                    Vector(0, 2 * ROBOT_MAX_RADIUS_METERS),
+                (world.ball().position() - world.field().friendlyGoalCenter())
+                    .orientation(),
                 0);
 
             tactics_to_run.emplace_back(shadow_tactic_main);
@@ -132,5 +139,5 @@ void EnemyFreekickPlay::getNextTactics(TacticCoroutine::push_type &yield)
     } while (true);
 }
 
-// Register this play in the PlayFactory
-static TPlayFactory<EnemyFreekickPlay> factory;
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Play, EnemyFreekickPlay> factory;

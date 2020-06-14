@@ -1,10 +1,11 @@
 #include "software/ai/hl/stp/play/kickoff_friendly_play.h"
 
 #include "shared/constants.h"
-#include "software/ai/hl/stp/play/play_factory.h"
 #include "software/ai/hl/stp/tactic/goalie_tactic.h"
 #include "software/ai/hl/stp/tactic/kickoff_chip_tactic.h"
 #include "software/ai/hl/stp/tactic/move_tactic.h"
+#include "software/util/design_patterns/generic_factory.h"
+
 
 const std::string KickoffFriendlyPlay::name = "KickoffFriendly Play";
 
@@ -26,7 +27,8 @@ bool KickoffFriendlyPlay::invariantHolds(const World &world) const
             world.gameState().isStopped());
 }
 
-void KickoffFriendlyPlay::getNextTactics(TacticCoroutine::push_type &yield)
+void KickoffFriendlyPlay::getNextTactics(TacticCoroutine::push_type &yield,
+                                         const World &world)
 {
     // Since we only have 6 robots at the maximum, the number one priority
     // is the robot doing the kickoff up front. The goalie is the second most
@@ -94,8 +96,8 @@ void KickoffFriendlyPlay::getNextTactics(TacticCoroutine::push_type &yield)
     // Part 1: setup state (move to key positions)
     while (world.gameState().isSetupState())
     {
-        auto enemy_threats = Evaluation::getAllEnemyThreats(
-            world.field(), world.friendlyTeam(), world.enemyTeam(), world.ball(), false);
+        auto enemy_threats = getAllEnemyThreats(world.field(), world.friendlyTeam(),
+                                                world.enemyTeam(), world.ball(), false);
 
         std::vector<std::shared_ptr<Tactic>> result = {goalie_tactic};
 
@@ -118,8 +120,8 @@ void KickoffFriendlyPlay::getNextTactics(TacticCoroutine::push_type &yield)
     // Part 2: not normal play, currently ready state (chip the ball)
     while (!world.gameState().isPlaying())
     {
-        auto enemy_threats = Evaluation::getAllEnemyThreats(
-            world.field(), world.friendlyTeam(), world.enemyTeam(), world.ball(), false);
+        auto enemy_threats = getAllEnemyThreats(world.field(), world.friendlyTeam(),
+                                                world.enemyTeam(), world.ball(), false);
 
         std::vector<std::shared_ptr<Tactic>> result = {goalie_tactic};
 
@@ -145,5 +147,6 @@ void KickoffFriendlyPlay::getNextTactics(TacticCoroutine::push_type &yield)
     }
 }
 
-// Register this play in the PlayFactory
-static TPlayFactory<KickoffFriendlyPlay> factory;
+
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Play, KickoffFriendlyPlay> factory;

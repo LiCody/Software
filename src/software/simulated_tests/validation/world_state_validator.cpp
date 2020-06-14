@@ -1,6 +1,6 @@
 #include "software/simulated_tests/validation/world_state_validator.h"
 
-#include "software/logger/init.h"
+#include "software/logger/logger.h"
 #include "software/simulated_tests/validation/continuous_function_validator.h"
 #include "software/simulated_tests/validation/function_validator.h"
 
@@ -64,12 +64,11 @@ bool WorldStateValidator::waitForValidationToPass(
             break;
         }
 
-        std::optional<World> world =
-            world_buffer.popLeastRecentlyAddedValue(world_buffer_timeout);
+        world = world_buffer.popLeastRecentlyAddedValue(world_buffer_timeout);
         if (!world)
         {
             LOG(WARNING)
-                << "WorldStateValidator timed out waiting for the initial World to be received";
+                << "WorldStateValidator timed out waiting for the World to be received";
             return false;
         }
         // We update the value of the existing pointer rather than making a new pointer

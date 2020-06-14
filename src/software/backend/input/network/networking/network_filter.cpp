@@ -10,8 +10,8 @@
 // We can initialize the field_state with all zeroes here because this state will never
 // be accessed by an external observer to this class. the getFieldData must be called to
 // get any field data which will update the state with the given protobuf data
-NetworkFilter::NetworkFilter()
-    : field_state(0, 0, 0, 0, 0, 0, 0, Timestamp::fromSeconds(0)),
+NetworkFilter::NetworkFilter(std::shared_ptr<const RefboxConfig> refbox_config)
+    : field_state(),
       ball_state(Point(), Vector(), Timestamp::fromSeconds(0)),
       friendly_team_state(Duration::fromMilliseconds(
           Util::Constants::ROBOT_DEBOUNCE_DURATION_MILLISECONDS)),
@@ -20,11 +20,12 @@ NetworkFilter::NetworkFilter()
       ball_filter(BallFilter::DEFAULT_MIN_BUFFER_SIZE,
                   BallFilter::DEFAULT_MAX_BUFFER_SIZE),
       friendly_team_filter(),
-      enemy_team_filter()
+      enemy_team_filter(),
+      refbox_config(refbox_config)
 {
 }
 
-Field NetworkFilter::getFieldData(const SSL_GeometryData &geometry_packet)
+std::optional<Field> NetworkFilter::getFieldData(const SSL_GeometryData &geometry_packet)
 {
     if (geometry_packet.has_field())
     {
@@ -43,7 +44,7 @@ Field NetworkFilter::createFieldFromPacketGeometry(
     // We can't guarantee the order that any geometry elements are passed to us in, so
     // We map the name of each line/arc to the actual object so we can refer to them
     // consistently
-    std::map<std::string, SSL_FieldCicularArc> ssl_circular_arcs;
+    std::map<std::string, SSL_FieldCircularArc> ssl_circular_arcs;
     std::map<std::string, SSL_FieldLineSegment> ssl_field_lines;
 
     // Circular arcs
@@ -52,9 +53,9 @@ Field NetworkFilter::createFieldFromPacketGeometry(
     // CenterCircle
     for (int i = 0; i < packet_geometry.field_arcs_size(); i++)
     {
-        const SSL_FieldCicularArc &arc = packet_geometry.field_arcs(i);
-        std::string arc_name           = arc.name();
-        ssl_circular_arcs[arc_name]    = arc;
+        const SSL_FieldCircularArc &arc = packet_geometry.field_arcs(i);
+        std::string arc_name            = arc.name();
+        ssl_circular_arcs[arc_name]     = arc;
     }
 
     // Field Lines
@@ -88,7 +89,8 @@ Field NetworkFilter::createFieldFromPacketGeometry(
     // Extract the data we care about and convert all units to meters
     double field_length   = packet_geometry.field_length() * METERS_PER_MILLIMETER;
     double field_width    = packet_geometry.field_width() * METERS_PER_MILLIMETER;
-    double goal_width     = packet_geometry.goalwidth() * METERS_PER_MILLIMETER;
+    double goal_width     = packet_geometry.goal_width() * METERS_PER_MILLIMETER;
+    double goal_depth     = packet_geometry.goal_depth() * METERS_PER_MILLIMETER;
     double boundary_width = packet_geometry.boundary_width() * METERS_PER_MILLIMETER;
     double center_circle_radius =
         ssl_circular_arcs["CenterCircle"].radius() * METERS_PER_MILLIMETER;
@@ -111,13 +113,12 @@ Field NetworkFilter::createFieldFromPacketGeometry(
     double defense_width =
         (defense_width_p1 - defense_width_p2).length() * METERS_PER_MILLIMETER;
 
-    Field field =
-        Field(field_length, field_width, defense_length, defense_width, goal_width,
-              boundary_width, center_circle_radius, Timestamp::fromSeconds(0));
+    Field field = Field(field_length, field_width, defense_length, defense_width,
+                        goal_depth, goal_width, boundary_width, center_circle_radius);
     return field;
 }
 
-BallState NetworkFilter::getFilteredBallData(
+std::optional<TimestampedBallState> NetworkFilter::getFilteredBallData(
     const std::vector<SSL_DetectionFrame> &detections)
 {
     auto ball_detections = std::vector<BallDetection>();
@@ -132,21 +133,10 @@ BallState NetworkFilter::getFilteredBallData(
                 Point(ball.x() * METERS_PER_MILLIMETER, ball.y() * METERS_PER_MILLIMETER);
             ball_detection.timestamp = Timestamp::fromSeconds(detection.t_capture());
 
-            // TODO remove Util::DynamicParameters as part of
-            // https://github.com/UBC-Thunderbots/Software/issues/960
             bool ball_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > ball_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < ball_detection.position.x();
-            bool ignore_ball = Util::DynamicParameters->getAIControlConfig()
-                                   ->getRefboxConfig()
-                                   ->IgnoreInvalidCameraData()
-                                   ->value() &&
+                refbox_config->MinValidX()->value() > ball_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < ball_detection.position.x();
+            bool ignore_ball = refbox_config->IgnoreInvalidCameraData()->value() &&
                                ball_position_invalid;
             if (!ignore_ball)
             {
@@ -155,11 +145,14 @@ BallState NetworkFilter::getFilteredBallData(
         }
     }
 
-    std::optional<Ball> new_ball =
-        ball_filter.getFilteredData(ball_detections, field_state);
-    if (new_ball)
+    if (field_state)
     {
-        ball_state = new_ball->currentState();
+        std::optional<Ball> new_ball =
+            ball_filter.getFilteredData(ball_detections, *field_state);
+        if (new_ball)
+        {
+            ball_state = new_ball->currentState();
+        }
     }
 
     return ball_state;
@@ -174,12 +167,7 @@ Team NetworkFilter::getFilteredFriendlyTeamData(
     for (const auto &detection : detections)
     {
         auto ssl_robots = detection.robots_yellow();
-        // TODO remove Util::DynamicParameters as part of
-        // https://github.com/UBC-Thunderbots/Software/issues/960
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             ssl_robots = detection.robots_blue();
         }
@@ -199,18 +187,9 @@ Team NetworkFilter::getFilteredFriendlyTeamData(
 
 
             bool robot_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > robot_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < robot_detection.position.x();
-            bool ignore_robot = Util::DynamicParameters->getAIControlConfig()
-                                    ->getRefboxConfig()
-                                    ->IgnoreInvalidCameraData()
-                                    ->value() &&
+                refbox_config->MinValidX()->value() > robot_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < robot_detection.position.x();
+            bool ignore_robot = refbox_config->IgnoreInvalidCameraData()->value() &&
                                 robot_position_invalid;
             if (!ignore_robot)
             {
@@ -235,10 +214,7 @@ Team NetworkFilter::getFilteredEnemyTeamData(
     for (const auto &detection : detections)
     {
         auto ssl_robots = detection.robots_blue();
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             ssl_robots = detection.robots_yellow();
         }
@@ -257,18 +233,9 @@ Team NetworkFilter::getFilteredEnemyTeamData(
             robot_detection.timestamp  = Timestamp::fromSeconds(detection.t_capture());
 
             bool robot_position_invalid =
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MinValidX()
-                        ->value() > robot_detection.position.x() ||
-                Util::DynamicParameters->getAIControlConfig()
-                        ->getRefboxConfig()
-                        ->MaxValidX()
-                        ->value() < robot_detection.position.x();
-            bool ignore_robot = Util::DynamicParameters->getAIControlConfig()
-                                    ->getRefboxConfig()
-                                    ->IgnoreInvalidCameraData()
-                                    ->value() &&
+                refbox_config->MinValidX()->value() > robot_detection.position.x() ||
+                refbox_config->MaxValidX()->value() < robot_detection.position.x();
+            bool ignore_robot = refbox_config->IgnoreInvalidCameraData()->value() &&
                                 robot_position_invalid;
             if (!ignore_robot)
             {
@@ -289,7 +256,7 @@ RefboxGameState NetworkFilter::getRefboxGameState(const Referee &packet)
     return getTeamCommand(packet.command());
 }
 
-// this maps a protobuf Referee_Command enum to its ROS message equivalent
+// this maps a protobuf Referee_Command enum to its equivalent internal type
 // this map is used when we are on the blue team
 const static std::unordered_map<Referee::Command, RefboxGameState> blue_team_command_map =
     {{Referee_Command_HALT, RefboxGameState::HALT},
@@ -311,7 +278,7 @@ const static std::unordered_map<Referee::Command, RefboxGameState> blue_team_com
      {Referee_Command_BALL_PLACEMENT_BLUE, RefboxGameState::BALL_PLACEMENT_US},
      {Referee_Command_BALL_PLACEMENT_YELLOW, RefboxGameState::BALL_PLACEMENT_THEM}};
 
-// this maps a protobuf Referee_Command enum to its ROS message equivalent
+// this maps a protobuf Referee_Command enum to its equivalent internal type
 // this map is used when we are on the yellow team
 const static std::unordered_map<Referee::Command, RefboxGameState>
     yellow_team_command_map = {
@@ -336,10 +303,7 @@ const static std::unordered_map<Referee::Command, RefboxGameState>
 
 RefboxGameState NetworkFilter::getTeamCommand(const Referee::Command &command)
 {
-    if (!Util::DynamicParameters->getAIControlConfig()
-             ->getRefboxConfig()
-             ->FriendlyColorYellow()
-             ->value())
+    if (!refbox_config->FriendlyColorYellow()->value())
     {
         return blue_team_command_map.at(command);
     }
@@ -353,10 +317,7 @@ void NetworkFilter::setOurFieldSide(bool blue_team_on_positive_half)
 {
     if (blue_team_on_positive_half)
     {
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             our_field_side = FieldSide::NEG_X;
         }
@@ -367,10 +328,7 @@ void NetworkFilter::setOurFieldSide(bool blue_team_on_positive_half)
     }
     else
     {
-        if (!Util::DynamicParameters->getAIControlConfig()
-                 ->getRefboxConfig()
-                 ->FriendlyColorYellow()
-                 ->value())
+        if (!refbox_config->FriendlyColorYellow()->value())
         {
             our_field_side = FieldSide::POS_X;
         }

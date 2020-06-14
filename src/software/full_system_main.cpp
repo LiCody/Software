@@ -1,14 +1,15 @@
 #include <boost/program_options.hpp>
-#include <g3log/g3log.hpp>
 #include <iostream>
 #include <numeric>
 
 #include "software/ai/ai_wrapper.h"
 #include "software/ai/hl/stp/play_info.h"
-#include "software/backend/backend_factory.h"
+#include "software/backend/backend.h"
 #include "software/constants.h"
-#include "software/logger/init.h"
-#include "software/visualizer/visualizer_wrapper.h"
+#include "software/gui/visualizer/visualizer_wrapper.h"
+#include "software/logger/logger.h"
+#include "software/util/design_patterns/generic_factory.h"
+
 
 using namespace boost::program_options;
 // Member variables we need to maintain state
@@ -46,7 +47,7 @@ void setBackendFromString(std::string backend_name)
 {
     try
     {
-        backend = BackendFactory::createBackend(backend_name);
+        backend = GenericFactory<std::string, Backend>::create(backend_name);
     }
     catch (const std::invalid_argument &e)
     {
@@ -66,7 +67,9 @@ commandLineArgs parseCommandLineArgs(int argc, char **argv)
 {
     commandLineArgs args;
     // Build one string with all the backend_names
-    std::vector<std::string> backend_names = BackendFactory::getRegisteredBackendNames();
+    std::vector<std::string> backend_names =
+        GenericFactory<std::string, Backend>::getRegisteredNames();
+
     std::string all_backend_names =
         std::accumulate(std::begin(backend_names), std::end(backend_names), std::string(),
                         [](std::string &ss, std::string &s) { return ss + s + ", "; });
@@ -125,7 +128,7 @@ int main(int argc, char **argv)
 {
     std::cout << BANNER << std::endl;
 
-    Util::Logger::LoggerSingleton::initializeLogger();
+    LoggerSingleton::initializeLogger();
 
     commandLineArgs args = parseCommandLineArgs(argc, argv);
 
@@ -135,12 +138,14 @@ int main(int argc, char **argv)
         // TODO (Issue #960): Once we're using injected parameters everywhere (instead of
         //                    just global accesses, `Util::DynamicParameters` should be
         //                    deleted, and we should just create an instance here instead)
-        std::shared_ptr<const ThunderbotsConfig> thunderbots_config =
-            Util::DynamicParameters;
+        std::shared_ptr<const AIConfig> ai_config =
+            Util::DynamicParameters->getAIConfig();
+        std::shared_ptr<const AIControlConfig> ai_control_config =
+            Util::DynamicParameters->getAIControlConfig();
 
         // The ai has to be initialized after the backend (which is started in
         // parseCommandLineArgs) This is a bug. See #834
-        ai = std::make_shared<AIWrapper>(thunderbots_config->getAIConfig());
+        ai = std::make_shared<AIWrapper>(ai_config, ai_control_config);
 
         setBackendFromString(args.backend_name);
 

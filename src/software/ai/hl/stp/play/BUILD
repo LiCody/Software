@@ -10,7 +10,6 @@ cc_library(
     hdrs = ["corner_kick_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:ball",
         "//software/ai/evaluation:possession",
@@ -20,7 +19,8 @@ cc_library(
         "//software/ai/hl/stp/tactic:passer_tactic",
         "//software/ai/hl/stp/tactic:receiver_tactic",
         "//software/ai/passing:pass_generator",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -31,7 +31,6 @@ cc_library(
     hdrs = ["defense_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:enemy_threat",
         "//software/ai/evaluation:possession",
@@ -46,8 +45,8 @@ cc_library(
         "//software/geom",
         "//software/logger",
         "//software/parameter:dynamic_parameters",
+        "//software/util/design_patterns:generic_factory",
         "//software/world:game_state",
-        "@g3log",
     ],
     alwayslink = True,
 )
@@ -58,7 +57,6 @@ cc_library(
     hdrs = ["enemy_freekick_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:enemy_threat",
         "//software/ai/hl/stp/tactic:crease_defender_tactic",
@@ -67,9 +65,10 @@ cc_library(
         "//software/ai/hl/stp/tactic:shadow_enemy_tactic",
         "//software/ai/hl/stp/tactic:shadow_freekicker_tactic",
         "//software/ai/hl/stp/tactic:stop_tactic",
+        "//software/logger",
         "//software/parameter:dynamic_parameters",
+        "//software/util/design_patterns:generic_factory",
         "//software/world:game_state",
-        "@g3log",
     ],
     alwayslink = True,
 )
@@ -80,10 +79,10 @@ cc_library(
     hdrs = ["example_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:move_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -107,10 +106,10 @@ cc_library(
     hdrs = ["halt_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:stop_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -133,7 +132,6 @@ cc_library(
     deps = [
         ":corner_kick_play",
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:ball",
         "//software/ai/evaluation:enemy_threat",
@@ -148,7 +146,7 @@ cc_library(
         "//software/ai/hl/stp/tactic:shoot_goal_tactic",
         "//software/ai/passing:pass_generator",
         "//software/logger",
-        "@g3log",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -159,7 +157,6 @@ cc_library(
     hdrs = ["kickoff_enemy_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:enemy_threat",
         "//software/ai/evaluation:possession",
@@ -167,7 +164,7 @@ cc_library(
         "//software/ai/hl/stp/tactic:move_tactic",
         "//software/ai/hl/stp/tactic:shadow_enemy_tactic",
         "//software/logger",
-        "@g3log",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -178,12 +175,12 @@ cc_library(
     hdrs = ["kickoff_friendly_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:goalie_tactic",
         "//software/ai/hl/stp/tactic:kickoff_chip_tactic",
         "//software/ai/hl/stp/tactic:move_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -194,11 +191,11 @@ cc_library(
     hdrs = ["penalty_kick_enemy_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:goalie_tactic",
         "//software/ai/hl/stp/tactic:move_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -209,12 +206,12 @@ cc_library(
     hdrs = ["penalty_kick_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:move_tactic",
         "//software/ai/hl/stp/tactic:penalty_kick_tactic",
         "//software/ai/hl/stp/tactic:penalty_setup_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -225,11 +222,9 @@ cc_library(
     hdrs = ["shoot_or_chip_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:enemy_threat",
         "//software/ai/evaluation:find_open_areas",
-        "//software/ai/evaluation:indirect_chip",
         "//software/ai/evaluation:possession",
         "//software/ai/hl/stp/tactic:crease_defender_tactic",
         "//software/ai/hl/stp/tactic:goalie_tactic",
@@ -238,9 +233,10 @@ cc_library(
         "//software/ai/hl/stp/tactic:shadow_enemy_tactic",
         "//software/ai/hl/stp/tactic:shoot_goal_tactic",
         "//software/ai/hl/stp/tactic:stop_tactic",
+        "//software/logger",
         "//software/parameter:dynamic_parameters",
+        "//software/util/design_patterns:generic_factory",
         "//software/world:game_state",
-        "@g3log",
     ],
     alwayslink = True,
 )
@@ -251,7 +247,6 @@ cc_library(
     hdrs = ["shoot_or_pass_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/evaluation:calc_best_shot",
         "//software/ai/evaluation:possession",
@@ -264,8 +259,9 @@ cc_library(
         "//software/ai/hl/stp/tactic:shadow_enemy_tactic",
         "//software/ai/hl/stp/tactic:shoot_goal_tactic",
         "//software/ai/passing:pass_generator",
+        "//software/logger",
         "//software/parameter:dynamic_parameters",
-        "@g3log",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -276,11 +272,11 @@ cc_library(
     hdrs = ["stop_play.h"],
     deps = [
         ":play",
-        ":play_factory",
         "//shared:constants",
         "//software/ai/hl/stp/tactic:goalie_tactic",
         "//software/ai/hl/stp/tactic:move_tactic",
-        "@g3log",
+        "//software/logger",
+        "//software/util/design_patterns:generic_factory",
     ],
     alwayslink = True,
 )
@@ -289,24 +285,8 @@ cc_library(
     name = "play",
     srcs = ["play.cpp"],
     hdrs = ["play.h"],
-    deps = ["//software/ai/hl/stp/tactic"],
-)
-
-cc_library(
-    name = "play_factory",
-    srcs = ["play_factory.cpp"],
-    hdrs = ["play_factory.h"],
-    deps = [":play"],
-)
-
-cc_test(
-    name = "play_factory_test",
-    srcs = ["play_factory_test.cpp"],
     deps = [
-        ":play_factory",
-        "//software/ai/hl/stp/play/test_plays:halt_test_play",
-        "//software/ai/hl/stp/play/test_plays:move_test_play",
-        "@gtest//:gtest_main",
+        "//software/ai/hl/stp/tactic",
     ],
 )
 

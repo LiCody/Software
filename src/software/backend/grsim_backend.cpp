@@ -1,8 +1,8 @@
 #include "software/backend/grsim_backend.h"
 
-#include "software/backend/backend_factory.h"
 #include "software/constants.h"
 #include "software/parameter/dynamic_parameters.h"
+#include "software/util/design_patterns/generic_factory.h"
 
 const std::string GrSimBackend::name = "grsim";
 
@@ -12,9 +12,11 @@ GrSimBackend::GrSimBackend()
                     Util::Constants::SSL_GAMECONTROLLER_MULTICAST_ADDRESS,
                     Util::Constants::SSL_GAMECONTROLLER_MULTICAST_PORT,
                     boost::bind(&GrSimBackend::receiveWorld, this, _1),
+                    Util::DynamicParameters->getAIControlConfig()->getRefboxConfig(),
                     Util::DynamicParameters->getCameraConfig()),
       grsim_output(Util::Constants::GRSIM_COMMAND_NETWORK_ADDRESS,
-                   Util::Constants::GRSIM_COMMAND_NETWORK_PORT)
+                   Util::Constants::GRSIM_COMMAND_NETWORK_PORT,
+                   Util::DynamicParameters->getAIControlConfig()->getRefboxConfig())
 {
 }
 
@@ -57,5 +59,5 @@ void GrSimBackend::updateGrSim()
     }
 }
 
-// Register this backend in the BackendFactory
-static TBackendFactory<GrSimBackend> factory;
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Backend, GrSimBackend> factory;

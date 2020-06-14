@@ -7,14 +7,13 @@ cc_binary(
         "//software:constants",
         "//software/ai:ai_wrapper",
         "//software/ai/hl/stp:play_info",
-        "//software/backend:backend_factory",
-        "//software/backend:grsim_backend",
-        "//software/backend:radio_backend",
+        "//software/backend",
+        "//software/backend:all_backends",
+        "//software/gui/visualizer:visualizer_wrapper",
         "//software/logger",
         "//software/parameter:dynamic_parameters",
-        "//software/visualizer:visualizer_wrapper",
+        "//software/util/design_patterns:generic_factory",
         "@boost//:program_options",
-        "@g3log",
     ],
 )
 

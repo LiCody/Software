@@ -1,7 +1,7 @@
 #include "software/ai/hl/stp/play/example_play.h"
 
-#include "software/ai/hl/stp/play/play_factory.h"
 #include "software/ai/hl/stp/tactic/move_tactic.h"
+#include "software/util/design_patterns/generic_factory.h"
 
 const std::string ExamplePlay::name = "Example Play";
 
@@ -22,7 +22,7 @@ bool ExamplePlay::invariantHolds(const World &world) const
     return true;
 }
 
-void ExamplePlay::getNextTactics(TacticCoroutine::push_type &yield)
+void ExamplePlay::getNextTactics(TacticCoroutine::push_type &yield, const World &world)
 {
     // Create MoveTactics that will loop forever
     auto move_tactic_1 = std::make_shared<MoveTactic>(true);
@@ -66,5 +66,5 @@ void ExamplePlay::getNextTactics(TacticCoroutine::push_type &yield)
     } while (true);
 }
 
-// Register this play in the PlayFactory
-static TPlayFactory<ExamplePlay> factory;
+// Register this play in the genericFactory
+static TGenericFactory<std::string, Play, ExamplePlay> factory;

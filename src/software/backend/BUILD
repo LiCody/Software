@@ -5,26 +5,11 @@ cc_library(
     hdrs = ["backend.h"],
     deps = [
         ":robot_status",
-        "//software/ai/primitive",
         "//software/multithreading:subject",
         "//software/multithreading:threaded_observer",
+        "//software/primitive",
+        "//software/proto:sensor_msg_cc_proto",
         "//software/world",
-    ],
-)
-
-cc_library(
-    name = "backend_factory",
-    srcs = ["backend_factory.cpp"],
-    hdrs = ["backend_factory.h"],
-    deps = [":backend"],
-)
-
-cc_test(
-    name = "backend_factory_test",
-    srcs = ["backend_factory_test.cpp"],
-    deps = [
-        ":backend_factory",
-        "@gtest//:gtest_main",
     ],
 )
 
@@ -34,9 +19,9 @@ cc_library(
     hdrs = ["grsim_backend.h"],
     deps = [
         ":backend",
-        ":backend_factory",
         "//software/backend/input/network/networking:network_client",
         "//software/backend/output/grsim:grsim_output",
+        "//software/util/design_patterns:generic_factory",
     ],
     # We force linking so that the static variables required for the "factory"
     # design pattern to work are linked in
@@ -50,9 +35,29 @@ cc_library(
     hdrs = ["radio_backend.h"],
     deps = [
         ":backend",
-        ":backend_factory",
         "//software/backend/input/network/networking:network_client",
         "//software/backend/output/radio:radio_output",
+        "//software/util/design_patterns:generic_factory",
+    ],
+    # We force linking so that the static variables required for the "factory"
+    # design pattern to work are linked in
+    # https://www.bfilipek.com/2018/02/static-vars-static-lib.html
+    alwayslink = True,
+)
+
+cc_library(
+    name = "wifi_backend",
+    srcs = ["wifi_backend.cpp"],
+    hdrs = ["wifi_backend.h"],
+    deps = [
+        ":backend",
+        "//shared:constants",
+        "//software:constants",
+        "//software/backend/input/network/networking:network_client",
+        "//software/networking:proto_multicast_listener",
+        "//software/networking:proto_multicast_sender",
+        "//software/proto/message_translation:protobuf_message_translation",
+        "//software/util/design_patterns:generic_factory",
     ],
     # We force linking so that the static variables required for the "factory"
     # design pattern to work are linked in
@@ -66,10 +71,10 @@ cc_library(
     hdrs = ["simulator_backend.h"],
     deps = [
         ":backend",
-        ":backend_factory",
-        "//software/backend/simulation/physics:physics_simulator",
         "//software/logger",
         "//software/multithreading:thread_safe_buffer",
+        "//software/simulation:simulator",
+        "//software/util/design_patterns:generic_factory",
         "//software/world",
     ],
     # We force linking so that the static variables required for the "factory"
@@ -80,6 +85,32 @@ cc_library(
 
 cc_library(
     name = "robot_status",
+    srcs = ["robot_status.cpp"],
     hdrs = ["robot_status.h"],
-    deps = [],
+    deps = [
+        "//shared/proto:tbots_cc_proto",
+        "//software/logger",
+    ],
+)
+
+cc_test(
+    name = "robot_status_test",
+    srcs = ["robot_status_test.cpp"],
+    deps = [
+        ":robot_status",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "all_backends",
+    hdrs = [
+        "all_backends.h",
+    ],
+    deps = [
+        ":grsim_backend",
+        ":radio_backend",
+        ":simulator_backend",
+        ":wifi_backend",
+    ],
 )

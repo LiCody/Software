@@ -3,8 +3,6 @@
 #include <algorithm>
 
 #include "software/ai/hl/stp/action/chip_action.h"
-#include "software/ai/hl/stp/tactic/mutable_tactic_visitor.h"
-
 
 ChipTactic::ChipTactic(const Ball &ball, bool loop_forever)
     : Tactic(loop_forever, {RobotCapabilities::Capability::Chip}), ball(ball)
@@ -36,6 +34,7 @@ double ChipTactic::calculateRobotCost(const Robot &robot, const World &world)
     // the closer the robot is to a ball, the cheaper it is to perform the chip
     double cost = (robot.position() - world.ball().position()).length() /
                   world.field().totalXLength();
+
     return std::clamp<double>(cost, 0, 1);
 }
 
