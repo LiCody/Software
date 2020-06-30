@@ -427,7 +427,7 @@ TEST_F(RobotTest, get_position_history)
     boost::circular_buffer<TimestampedRobotState> previous_states =
         robot.getPreviousStates();
     std::vector<Point> previous_positions{};
-    for (int i = 0; i < previous_states.size(); i++)
+    for (size_t i = 0; i < previous_states.size(); i++)
     {
         previous_positions.push_back(previous_states.at(i).robotState().position());
     }
@@ -450,7 +450,7 @@ TEST_F(RobotTest, get_velocity_history)
     boost::circular_buffer<TimestampedRobotState> previous_states =
         robot.getPreviousStates();
     std::vector<Vector> previous_velocities{};
-    for (int i = 0; i < previous_states.size(); i++)
+    for (size_t i = 0; i < previous_states.size(); i++)
     {
         previous_velocities.push_back(previous_states.at(i).robotState().velocity());
     }
@@ -474,7 +474,7 @@ TEST_F(RobotTest, get_orientation_history)
     boost::circular_buffer<TimestampedRobotState> previous_states =
         robot.getPreviousStates();
     std::vector<Angle> previous_orientations{};
-    for (int i = 0; i < previous_states.size(); i++)
+    for (size_t i = 0; i < previous_states.size(); i++)
     {
         previous_orientations.push_back(previous_states.at(i).robotState().orientation());
     }
@@ -501,7 +501,7 @@ TEST_F(RobotTest, get_angular_velocity_history)
     boost::circular_buffer<TimestampedRobotState> previous_states =
         robot.getPreviousStates();
     std::vector<AngularVelocity> previous_angular_velocities{};
-    for (int i = 0; i < previous_states.size(); i++)
+    for (size_t i = 0; i < previous_states.size(); i++)
     {
         previous_angular_velocities.push_back(
             previous_states.at(i).robotState().angularVelocity());
@@ -525,7 +525,7 @@ TEST_F(RobotTest, get_timestamp_history)
     boost::circular_buffer<TimestampedRobotState> previous_states =
         robot.getPreviousStates();
     std::vector<Timestamp> previous_timestamps{};
-    for (int i = 0; i < previous_states.size(); i++)
+    for (size_t i = 0; i < previous_states.size(); i++)
     {
         previous_timestamps.push_back(previous_states.at(i).timestamp());
     }
@@ -580,9 +580,9 @@ TEST_F(RobotTest, get_timestamp_index_no_matching_timestamp)
 
 TEST_F(RobotTest, get_capabilities_blacklist)
 {
-    std::set<RobotCapabilities::Capability> blacklist = {
-        RobotCapabilities::Capability::Dribble,
-        RobotCapabilities::Capability::Chip,
+    std::set<RobotCapability> blacklist = {
+        RobotCapability::Dribble,
+        RobotCapability::Chip,
     };
 
     Robot robot = Robot(0, Point(3, 1.2), Vector(-3, 1), Angle::fromDegrees(0),
@@ -593,18 +593,17 @@ TEST_F(RobotTest, get_capabilities_blacklist)
 
 TEST_F(RobotTest, get_capabilities_whitelist)
 {
-    std::set<RobotCapabilities::Capability> blacklist = {
-        RobotCapabilities::Capability::Dribble,
-        RobotCapabilities::Capability::Chip,
+    std::set<RobotCapability> blacklist = {
+        RobotCapability::Dribble,
+        RobotCapability::Chip,
     };
 
     Robot robot = Robot(0, Point(3, 1.2), Vector(-3, 1), Angle::fromDegrees(0),
                         AngularVelocity::fromDegrees(25), current_time, 3, blacklist);
 
     // whitelist = all capabilities - blacklist
-    std::set<RobotCapabilities::Capability> all_capabilities =
-        RobotCapabilities::allCapabilities();
-    std::set<RobotCapabilities::Capability> expected_whitelist;
+    std::set<RobotCapability> all_capabilities = allRobotCapabilities();
+    std::set<RobotCapability> expected_whitelist;
     std::set_difference(all_capabilities.begin(), all_capabilities.end(),
                         blacklist.begin(), blacklist.end(),
                         std::inserter(expected_whitelist, expected_whitelist.begin()));

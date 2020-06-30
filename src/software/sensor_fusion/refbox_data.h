@@ -1,16 +1,10 @@
 #pragma once
 
-#include <vector>
-
-#include "software/new_geom/point.h"
-#include "software/proto/ssl_referee.pb.h"
-#include "software/sensor_fusion/team_info.h"
-#include "software/time/timestamp.h"
 #include "software/util/make_enum/make_enum.h"
 
 // clang-format off
 MAKE_ENUM(RefboxGameState,
-          // these enum items map to the constants in RefboxCommand.msg
+          // these enums map to the enums in ssl_referee.proto
           HALT,
           STOP,
           NORMAL_START,

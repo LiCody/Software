@@ -109,6 +109,12 @@ cc_test(
 )
 
 cc_library(
+    name = "team_colour",
+    hdrs = ["team_colour.h"],
+    deps = ["//software/util/make_enum"],
+)
+
+cc_library(
     name = "robot",
     srcs = ["robot.cpp"],
     hdrs = ["robot.h"],
@@ -116,6 +122,7 @@ cc_library(
         ":robot_capabilities",
         ":timestamped_robot_state",
         "//software/geom",
+        "//software/time:duration",
         "//software/time:timestamp",
         "@boost//:circular_buffer",
     ],
@@ -158,10 +165,13 @@ cc_library(
     srcs = ["robot_state.cpp"],
     hdrs = ["robot_state.h"],
     deps = [
+        "team_colour",
+        "//shared:constants",
         "//software/new_geom:angle",
         "//software/new_geom:angular_velocity",
         "//software/new_geom:point",
         "//software/new_geom:vector",
+        "//software/time:duration",
     ],
 )
 
