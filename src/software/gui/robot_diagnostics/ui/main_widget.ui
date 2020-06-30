@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>892</width>
-    <height>480</height>
+    <height>536</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -227,7 +227,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QProgressBar" name="progressBar_dribbler_speed">
+                 <widget class="QProgressBar" name="progressBar_dribbler_rpm">
                   <property name="maximum">
                    <number>6000</number>
                   </property>
@@ -344,7 +344,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QProgressBar" name="progressBar_board">
+                 <widget class="QProgressBar" name="progressBar_board_temp">
                   <property name="value">
                    <number>0</number>
                   </property>
@@ -1025,11 +1025,7 @@
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_28">
       <item>
-       <widget class="QTableWidget" name="robot_status_table_widget">
-        <attribute name="horizontalHeaderCascadingSectionResizes">
-         <bool>false</bool>
-        </attribute>
-       </widget>
+       <widget class="RobotStatusTable" name="robot_status_table_widget"/>
       </item>
      </layout>
     </item>
@@ -1038,10 +1034,17 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>RobotStatusTable</class>
+   <extends>QTableWidget</extends>
+   <header>software/gui/generic_widgets/robot_status/robot_status_table.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_charge_state"/>
   <buttongroup name="buttonGroup_autochick"/>
+  <buttongroup name="buttonGroup_charge_state"/>
  </buttongroups>
 </ui>
