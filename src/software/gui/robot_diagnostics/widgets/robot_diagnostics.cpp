@@ -78,10 +78,10 @@ void RobotDiagnostics::updateRobotDiagnostics()
 
         updateFeedback(main_widget, sensor_msg);
         // update robot status table
-        for (const auto& robot_msg : sensor_msg.value().tbots_robot_msgs())
+        /*for (const auto& robot_msg : sensor_msg.value().tbots_robot_msgs())
         {
             main_widget->robot_status_table_widget->updateTbotsRobotMsg(robot_msg);
-        }
+        }*/
         sensor_msg = sensor_msg_buffer->popLeastRecentlyAddedValue();
     }
 }
