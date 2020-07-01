@@ -29,7 +29,6 @@ qt_cc_library(
     hdr = "chicker.h",
     deps = [
         ":slider",
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "//software/util/make_enum",
         "@qt//:qt_widgets",
@@ -42,7 +41,6 @@ qt_cc_library(
     hdr = "dribbler.h",
     deps = [
         ":slider",
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "@qt//:qt_widgets",
     ],
@@ -54,7 +52,6 @@ qt_cc_library(
     hdr = "drive.h",
     deps = [
         ":slider",
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "//software/util/make_enum",
         "@qt//:qt_widgets",
@@ -66,7 +63,6 @@ qt_cc_library(
     src = "feedback.cpp",
     hdr = "feedback.h",
     deps = [
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "//software/proto:sensor_msg_cc_proto",
         "@qt//:qt_widgets",
@@ -78,7 +74,6 @@ qt_cc_library(
     src = "leds.cpp",
     hdr = "leds.h",
     deps = [
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "@qt//:qt_widgets",
     ],
@@ -90,7 +85,6 @@ qt_cc_library(
     hdr = "robot_selection.h",
     deps = [
         "//shared:constants",
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "//software/logger",
         "@qt//:qt_widgets",
@@ -102,7 +96,6 @@ qt_cc_library(
     src = "slider.cpp",
     hdr = "slider.h",
     deps = [
-        "//software/gui/generic_widgets/robot_status:robot_status_table",
         "//software/gui/robot_diagnostics/ui:main_widget",
         "@qt//:qt_widgets",
     ],
