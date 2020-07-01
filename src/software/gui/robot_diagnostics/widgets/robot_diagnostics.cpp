@@ -73,9 +73,6 @@ void RobotDiagnostics::updateRobotDiagnostics()
     std::optional<SensorMsg> sensor_msg = sensor_msg_buffer->popLeastRecentlyAddedValue();
     while (sensor_msg)
     {
-        // TODO (Issue #1421): Update robot status log and feedback widget using
-        // `sensor_msg.value()`
-
         updateFeedback(main_widget, sensor_msg.value());
         // update robot status table
         /*for (const auto& robot_msg : sensor_msg.value().tbots_robot_msgs())
